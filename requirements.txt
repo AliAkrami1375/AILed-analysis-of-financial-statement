@@ -1,0 +1,9 @@
+Flask
+flask-cors
+PyJWT
+pandas
+openai>=1.0.0
+
+
+# dask[dataframe]
+# pyarrow

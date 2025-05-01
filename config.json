@@ -1,0 +1,21 @@
+{
+  "openai_api_key": "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",
+  "default_prompt": "You are a financial analyst.",
+  "fields": [
+    "revenue",
+    "profit",
+    "assets",
+    "equity",
+    "liabilities"
+  ],
+  "users": [
+    {
+      "username": "admin",
+      "password": "123456"
+    },
+    {
+      "username": "user1",
+      "password": "pass1"
+    }
+  ]
+}

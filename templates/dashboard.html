@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Dashboard</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 min-h-screen">
+  <!-- Mobile Navbar -->
+  <header class="md:hidden bg-white shadow p-4 flex justify-between items-center">
+    <h1 class="text-xl font-bold">Dashboard</h1>
+    <button id="menuToggle" class="text-gray-600 focus:outline-none">
+      <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
+      </svg>
+    </button>
+  </header>
+
+  <!-- Sidebar / Menu -->
+  <div class="md:flex">
+    <aside id="sidebar" class="w-full md:w-64 bg-white shadow md:h-screen p-4 hidden md:block">
+      <nav class="flex flex-col space-y-4">
+        <button onclick="showTab('searchTab'); toggleMenu()" class="hover:text-blue-600 font-medium">🔍 Search</button>
+        <button onclick="showTab('archiveTab'); toggleMenu()" class="hover:text-blue-600 font-medium">📁 Archive</button>
+        <button id="settingsTabBtn" onclick="showTab('settingsTab'); toggleMenu()" class="hover:text-blue-600 font-medium hidden">⚙️ Settings</button>
+        <button onclick="logout()" class="hover:text-red-500 font-medium">🚪 Logout</button>
+      </nav>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="flex-1 p-4 md:p-8">
+      <!-- Search Tab -->
+      <section id="searchTab">
+        <h2 class="text-2xl font-bold mb-4">Search Company</h2>
+        <form id="searchForm" class="space-y-4 mb-6 max-w-lg mx-auto">
+          <input type="text" id="company_name" placeholder="Company Name" class="w-full px-4 py-2 border rounded shadow-sm" required />
+          <input type="number" id="fiscal_year" placeholder="Fiscal Year" class="w-full px-4 py-2 border rounded shadow-sm" required />
+          <button type="submit" class="w-full bg-blue-500 text-white py-2 rounded hover:bg-blue-600">Search</button>
+        </form>
+        <div id="searchResult" class="bg-white p-4 rounded shadow hidden overflow-auto">
+          <h3 class="text-lg font-semibold mb-2">Analysis Result</h3>
+          <pre id="resultJson" class="bg-gray-100 p-2 rounded text-sm whitespace-pre-wrap"></pre>
+        </div>
+      </section>
+
+      <!-- Archive Tab -->
+      <section id="archiveTab" class="hidden">
+        <h2 class="text-2xl font-bold mb-4">Your Archive</h2>
+        <div class="overflow-x-auto">
+          <table class="min-w-full bg-white shadow rounded table-auto text-left text-sm">
+            <thead class="bg-gray-200">
+              <tr>
+                <th class="p-3">Company</th>
+                <th class="p-3">Year</th>
+                <th class="p-3">Summary</th>
+              </tr>
+            </thead>
+            <tbody id="archiveTable"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- Settings Tab -->
+      <section id="settingsTab" class="hidden">
+        <h2 class="text-2xl font-bold mb-4">Settings</h2>
+        <form id="configForm" class="space-y-4 mb-8 max-w-xl mx-auto">
+          <input type="text" id="openai_key" placeholder="OpenAI API Key" class="w-full px-4 py-2 border rounded shadow-sm" />
+          <textarea id="default_prompt" placeholder="Default Prompt" class="w-full px-4 py-2 border rounded shadow-sm"></textarea>
+          <button type="submit" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">Save Config</button>
+        </form>
+
+        <div class="mt-8 max-w-xl mx-auto">
+          <h3 class="text-xl font-semibold mb-2">Prompt Fields</h3>
+          <ul id="fieldsList" class="mb-4 space-y-1"></ul>
+          <form id="addFieldForm" class="flex flex-wrap gap-2">
+            <input type="text" id="newField" placeholder="Field Name" class="flex-grow px-2 py-1 border rounded" required />
+            <button type="submit" class="bg-green-600 text-white px-3 py-1 rounded hover:bg-green-700">Add Field</button>
+          </form>
+        </div>
+
+        <div class="mt-8 max-w-xl mx-auto">
+          <h3 class="text-xl font-semibold mb-2">Users</h3>
+          <ul id="userList" class="mb-4 space-y-1"></ul>
+          <form id="addUserForm" class="flex flex-wrap gap-2">
+            <input type="text" id="newUsername" placeholder="Username" class="flex-grow px-2 py-1 border rounded" required />
+            <input type="password" id="newPassword" placeholder="Password" class="flex-grow px-2 py-1 border rounded" required />
+            <button type="submit" class="bg-green-600 text-white px-3 py-1 rounded hover:bg-green-700">Add</button>
+          </form>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <!-- Modal -->
+  <div id="resultModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden z-50">
+    <div class="bg-white p-6 rounded shadow max-w-xl w-full mx-4">
+      <h3 class="text-lg font-bold mb-4">Full GPT Result</h3>
+      <pre id="modalContent" class="bg-gray-100 p-3 rounded text-sm whitespace-pre-wrap max-h-96 overflow-y-auto"></pre>
+      <button onclick="closeModal()" class="mt-4 bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">Close</button>
+    </div>
+  </div>
+
+  <script>
+    function toggleMenu() {
+      const sidebar = document.getElementById("sidebar");
+      sidebar.classList.toggle("hidden");
+    }
+    document.getElementById("menuToggle")?.addEventListener("click", toggleMenu);
+  </script>
+  <script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+</body>
+</html>
