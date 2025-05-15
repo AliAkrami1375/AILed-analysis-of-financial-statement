@@ -69,6 +69,8 @@ def login():
 @app.route('/api/search', methods=['POST'])
 @token_required
 def search():
+    import re
+
     data = request.get_json()
     company = data.get('company_name')
     year = str(data.get('fiscal_year'))
@@ -83,6 +85,7 @@ def search():
     if cache_key in cache:
         result = cache[cache_key]
     else:
+        # بخش ۱: داده متنی شرکت از فایل اصلی
         df = pd.read_csv('data.csv')
         filtered = df[
             (df['year'].astype(str) == year) &
@@ -91,9 +94,46 @@ def search():
         if filtered.empty:
             return jsonify({'error': 'Data not found'}), 404
         record = filtered.iloc[0].to_dict()
+
+        # بخش ۲: محاسبه نسبت‌های مالی
+        reshaped = pd.read_csv('reshaped_data_cleaned.csv')
+        ratios = pd.read_csv('ratios_cleaned.csv')
+
+        pivoted = reshaped.pivot_table(index=['Symbol', 'year'],
+                                       columns='Financial Metrics',
+                                       values='amount',
+                                       aggfunc='first')
+        symbol = record.get("SECURITY NAME", "").split()[0] or record.get("MNEMONIC", "").split()[0]
+        try:
+            row = pivoted.loc[(symbol, int(year))]
+        except KeyError:
+            row = pd.Series()
+
+        def safe_eval_formula(r, formula):
+            try:
+                parsed = formula
+                for m in ratios['Formula'].str.extractall(r'([A-Z][A-Z0-9 \-]+)')[0].unique():
+                    if m in r and pd.notnull(r[m]):
+                        parsed = re.sub(rf'\b{re.escape(m)}\b', f"({r[m]})", parsed)
+                    else:
+                        return None
+                return eval(parsed)
+            except:
+                return None
+
+        ratio_text = ""
+        for _, ratio_row in ratios.iterrows():
+            name = ratio_row['Ration']
+            formula = ratio_row['Formula']
+            value = safe_eval_formula(row, formula)
+            if value is not None:
+                ratio_text += f"{name}: {round(value, 3)}\n"
+
+        # بخش ۳: آماده‌سازی پرامپت
         fields = config.get('fields', [])
         field_lines = "\n".join(f"{key}: {record.get(key, 'N/A')}" for key in fields)
-        prompt = f"{config.get('default_prompt', '')}\nAnalyze {company} in {year}.\n{field_lines}"
+        prompt = f"{config.get('default_prompt', '')}\nAnalyze {company} in {year}.\n{field_lines}\n\nFinancial Ratios:\n{ratio_text}"
+
         client = OpenAI(api_key=config.get("openai_api_key"))
         response = client.chat.completions.create(
             model="gpt-3.5-turbo",
@@ -102,12 +142,14 @@ def search():
                 {"role": "user", "content": prompt}
             ],
             temperature=0.7,
-            max_tokens=150
+            max_tokens=300
         )
+
         analysis = response.choices[0].message.content
         result = {
             'summary': analysis,
-            'raw_data': record
+            'raw_data': record,
+            'ratios': ratio_text.strip()
         }
         cache[cache_key] = result
         save_json('search_cache.json', cache)
@@ -122,6 +164,7 @@ def search():
     })
     save_json('archive.json', archive)
     return jsonify({'result': result})
+
 
 @app.route('/api/archive', methods=['GET'])
 @token_required
