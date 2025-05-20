@@ -66,69 +66,132 @@ def login():
             return jsonify({'token': token})
     return jsonify({'error': 'Invalid credentials'}), 401
 
+# UPDATED app.py to compute ratios using reshaped_data.csv and Ratio.xlsx
+
 @app.route('/api/search', methods=['POST'])
 @token_required
 def search():
     data = request.get_json()
-    company = data.get('company_name')
-    year = str(data.get('fiscal_year'))
-    if not company or not year:
-        return jsonify({'error': 'Missing parameters'}), 400
+    company = data.get("company_name")
+    year = str(data.get("fiscal_year"))
 
-    cache = load_json('search_cache.json')
-    archive = load_json('archive.json')
-    config = load_json('config.json')
+    if not company or not year:
+        return jsonify({"error": "Missing company name or fiscal year"}), 400
+
+    cache = load_json("search_cache.json")
+    archive = load_json("archive.json")
+    config = load_json("config.json")
+
     cache_key = f"{company}_{year}"
+    print("[LOG] Cache Key:", cache_key)
 
     if cache_key in cache:
+        print("[LOG] Cache hit for", cache_key)
         result = cache[cache_key]
     else:
-        df = pd.read_csv('data.csv')
-        filtered = df[
-            (df['year'].astype(str) == year) &
-            (df['full_report_sentence'].str.contains(company, case=False, na=False))
-        ]
-        if filtered.empty:
-            return jsonify({'error': 'Data not found'}), 404
-        record = filtered.iloc[0].to_dict()
-        fields = config.get('fields', [])
-        field_lines = "\n".join(f"{key}: {record.get(key, 'N/A')}" for key in fields)
-        prompt = f"{config.get('default_prompt', '')}\nAnalyze {company} in {year}.\n{field_lines}"
+        df = pd.read_csv("data.csv")
+        row = df[(df['SECURITY NAME'].str.lower().str.strip() == company.lower().strip()) & (df['year'].astype(str) == year)]
+
+        if row.empty:
+            print("[LOG] No match in data.csv, continuing with reshaped_data only")
+            record = {"SECURITY NAME": company, "year": year}
+            symbol = company  # fallback
+        else:
+            record = row.iloc[0].to_dict()
+            print("[LOG] Loaded record:", record)
+            symbol = record.get("MNEMONIC")
+            if not symbol:
+                return jsonify({"error": "Symbol not found in data"}), 404
+            symbol = symbol.strip().rstrip('.')
+
+        fields = config.get("fields", [])
+        field_lines = "\n".join(f"{key.capitalize()}: {record.get(key, 'N/A')}" for key in fields)
+
+        ratios_df = pd.read_excel("Ratio.xlsx")
+        reshape_df = pd.read_csv("reshaped_data.csv")
+        reshape_df = reshape_df[(reshape_df['Symbol'] == symbol) & (reshape_df['year'].astype(str) == year)]
+
+        metric_values = reshape_df.set_index("Financial Metrics")["amount"].to_dict()
+
+        computed_ratios = []
+        for _, row in ratios_df.iterrows():
+            formula = str(row.get("Formula"))
+            ratio_name = row.get("Ration")
+            category = row.get("Category")
+            if pd.isna(formula) or '[' in formula or ']' in formula:
+                continue
+
+            try:
+                temp_formula = formula
+                for metric in metric_values:
+                    temp_formula = temp_formula.replace(metric, str(metric_values[metric]))
+                value = eval(temp_formula)
+                computed_ratios.append({
+                    "ratio": ratio_name,
+                    "category": category,
+                    "formula": formula,
+                    "evaluated": temp_formula,
+                    "value": value
+                })
+            except Exception as e:
+                computed_ratios.append({
+                    "ratio": ratio_name,
+                    "category": category,
+                    "formula": formula,
+                    "evaluated": temp_formula,
+                    "error": str(e)
+                })
+
+        prompt = (
+            config.get("default_prompt", "You are a financial analyst.") + "\n" +
+            f"Analyze the financial performance of {company} in fiscal year {year}.\n" +
+            field_lines + "\n\n" +
+            "Ratios computed:\n" +
+            "\n".join(f"- {r['ratio']}: {r.get('value', 'Error')}" for r in computed_ratios if 'value' in r)
+        )
+
         client = OpenAI(api_key=config.get("openai_api_key"))
         response = client.chat.completions.create(
             model="gpt-3.5-turbo",
             messages=[
-                {"role": "system", "content": config.get('default_prompt', '')},
+                {"role": "system", "content": config.get("default_prompt", "You are a financial analyst.")},
                 {"role": "user", "content": prompt}
             ],
             temperature=0.7,
-            max_tokens=150
+            max_tokens=300
         )
-        analysis = response.choices[0].message.content
-        result = {
-            'summary': analysis,
-            'raw_data': record
-        }
-        cache[cache_key] = result
-        save_json('search_cache.json', cache)
 
-    user = request.user
-    if user not in archive:
-        archive[user] = []
-    archive[user].append({
-        'company_name': company,
-        'fiscal_year': year,
-        'result': result
-    })
-    save_json('archive.json', archive)
-    return jsonify({'result': result})
+        analysis = response.choices[0].message.content
+        # analysis ="result"
+
+        result = {
+            "summary": analysis,
+            "raw_data": record,
+            "ratios": computed_ratios
+        }
+
+        cache[cache_key] = result
+        save_json("search_cache.json", cache)
+
+    if not any(item["company_name"] == company and str(item["fiscal_year"]) == year for item in archive):
+        archive.append({
+            "company_name": company,
+            "fiscal_year": year,
+            "result": result
+        })
+        save_json("archive.json", archive)
+
+    return jsonify({"result": result})
+
+
+
 
 @app.route('/api/archive', methods=['GET'])
 @token_required
 def archive():
     user = request.user
     data = load_json('archive.json')
-    return jsonify({'archive': data.get(user, [])})
+    return jsonify({'archive': data})
 
 @app.route('/api/config', methods=['GET', 'POST'])
 @token_required
