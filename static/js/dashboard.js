@@ -38,7 +38,8 @@ function openModal(content) {
   }
 
   const modal = document.getElementById("modalContent");
-
+  
+  
   modal.innerHTML = `
     <h3 class="text-lg font-bold mb-2">Company Summary</h3>
     <p class="mb-4">${parsed.summary || "No summary provided."}</p>
@@ -112,17 +113,36 @@ searchForm?.addEventListener("submit", async function (e) {
   ratioList.innerHTML = "";
 
   if (res.ok) {
-    resultJson.textContent = data.result.summary;
+    var converter = new showdown.Converter()
+    var htmlsum = converter.makeHtml(data.result.summary)
+    resultJson.innerHTML = htmlsum;
     resultDiv.classList.remove("hidden");
+    var CatagorieData={};
     if (Array.isArray(data.result.ratios)) {
+      var latestcat = "";
       data.result.ratios.forEach(r => {
-        const li = document.createElement("li");
-        li.className = "border px-4 py-2 rounded bg-gray-50";
-        li.innerHTML = `<strong>${r.ratio}</strong>: ${r.value || 'Not Found Formula'} <br/><span class='text-xs text-gray-600'>${r.formula}</span>`;
-        ratioList.appendChild(li);
+        if(!CatagorieData[r.category]){
+          CatagorieData[r.category] = [];
+        }
+        CatagorieData[r.category].push(r);
+      });
+      Object.keys(CatagorieData).forEach(element => {
+        const div = document.createElement("div");
+        div.className = "border px-4 py-2 rounded bg-gray-50";
+        div.innerHTML = `<p class="mb-3 text-xl font-bold">${element}</p>`;
+        CatagorieData[element].forEach(r => {
+          if(r.value){
+            const li = document.createElement("li");
+            li.className = "border px-4 py-2 rounded bg-gray-50";
+            li.innerHTML = `<strong>${r.ratio}</strong>: ${r.value || 'Not Found Formula'} <br/><span class='text-xs text-gray-600'>${r.formula}</span>`;
+            div.appendChild(li);
+          }
+        })
+        ratioList.appendChild(div);
       });
     }
     loadArchive();
+    
   } else {
     resultJson.textContent = "Error: " + data.error;
     resultDiv.classList.remove("hidden");
@@ -155,12 +175,12 @@ async function loadArchive() {
     var key = entry.company_name+entry.fiscal_year
     AllData[key] = JSON.stringify(fullContent);
     console.log(key,AllData[key]);
-    
+    var shortsumm = summary.substring(0, 50) + " ..." ;
     tr.innerHTML = `
       <td class="p-3">${entry.company_name}</td>
       <td class="p-3">${entry.fiscal_year}</td>
       <td class="p-3 flex items-center justify-between">
-        ${summary}
+        ${shortsumm}
         <button class="ml-2 text-blue-600 underline text-sm" data-result='${key}' onclick="handleShowResult(this)">Show Result</button>
       </td>
     `;

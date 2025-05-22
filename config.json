@@ -1,17 +1,9 @@
 {
-    "openai_api_key": "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",
+    "openai_api_key": "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",
     "default_prompt": "You are a financial analyst.",
     "fields": [
-        "full_report_sentence",
         "FinancialRisk",
-        "OtherIdiosyncraticRisk",
-        "LegalRegulatoryRisk",
-        "OtherSystematicRisk",
-        "TaxRisk",
-        "FinancialRisk%",
-        "LegalRegulatoryRisk%",
-        "OtherSystematicRisk%",
-        "TaxRisk%"
+        "TaxRisk"
     ],
     "users": [
         {

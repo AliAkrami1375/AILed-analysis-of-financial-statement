@@ -90,11 +90,11 @@ def search():
         result = cache[cache_key]
     else:
         df = pd.read_csv("data.csv")
-        row = df[(df['SECURITY NAME'].str.lower().str.strip() == company.lower().strip()) & (df['year'].astype(str) == year)]
+        row = df[(df['MNEMONIC'].str.lower().str.strip() == company.lower().strip()) & (df['year'].astype(str) == year)]
 
         if row.empty:
             print("[LOG] No match in data.csv, continuing with reshaped_data only")
-            record = {"SECURITY NAME": company, "year": year}
+            record = {"MNEMONIC": company, "year": year}
             symbol = company  # fallback
         else:
             record = row.iloc[0].to_dict()
@@ -152,7 +152,7 @@ def search():
 
         client = OpenAI(api_key=config.get("openai_api_key"))
         response = client.chat.completions.create(
-            model="gpt-3.5-turbo",
+            model="gpt-4.1",
             messages=[
                 {"role": "system", "content": config.get("default_prompt", "You are a financial analyst.")},
                 {"role": "user", "content": prompt}
