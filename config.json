@@ -1,5 +1,5 @@
 {
-    "openai_api_key": "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",
+    "openai_api_key": "",
     "default_prompt": "You are a financial analyst.",
     "fields": [
         "FinancialRisk",
