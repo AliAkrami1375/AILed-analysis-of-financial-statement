@@ -90,7 +90,6 @@ const searchForm = document.getElementById("searchForm");
 searchForm?.addEventListener("submit", async function (e) {
   e.preventDefault();
   const btn = this.querySelector("button");
-  const originalText = btn.textContent;
   btn.disabled = true;
   btn.textContent = "Loading...";
 
@@ -113,44 +112,73 @@ searchForm?.addEventListener("submit", async function (e) {
   ratioList.innerHTML = "";
 
   if (res.ok) {
-    var converter = new showdown.Converter()
-    var htmlsum = converter.makeHtml(data.result.summary)
-    resultJson.innerHTML = htmlsum;
-    resultDiv.classList.remove("hidden");
-    var CatagorieData={};
-    if (Array.isArray(data.result.ratios)) {
-      var latestcat = "";
-      data.result.ratios.forEach(r => {
-        if(!CatagorieData[r.category]){
-          CatagorieData[r.category] = [];
-        }
-        CatagorieData[r.category].push(r);
-      });
-      Object.keys(CatagorieData).forEach(element => {
-        const div = document.createElement("div");
-        div.className = "border px-4 py-2 rounded bg-gray-50";
-        div.innerHTML = `<p class="mb-3 text-xl font-bold">${element}</p>`;
-        CatagorieData[element].forEach(r => {
-          if(r.value){
-            const li = document.createElement("li");
-            li.className = "border px-4 py-2 rounded bg-gray-50";
-            li.innerHTML = `<strong>${r.ratio}</strong>: ${r.value || 'Not Found Formula'} <br/><span class='text-xs text-gray-600'>${r.formula}</span>`;
-            div.appendChild(li);
-          }
-        })
-        ratioList.appendChild(div);
+    const converter = new showdown.Converter();
+    const summaryHtml = converter.makeHtml(data.result.summary || "");
+    resultJson.innerHTML = `<div class="mb-4">${summaryHtml}</div>`;
+
+    if (data.result.category_summaries) {
+      Object.entries(data.result.category_summaries).forEach(([cat, text]) => {
+        const section = document.createElement("details");
+        section.className = "mb-4 border rounded bg-white shadow-sm";
+
+        const summary = document.createElement("summary");
+        summary.className = "cursor-pointer p-2 font-semibold text-blue-600 hover:underline";
+        summary.textContent = `📊 ${cat} Summary`;
+        section.appendChild(summary);
+
+        const body = document.createElement("div");
+        body.className = "p-3 text-sm";
+        body.innerHTML = converter.makeHtml(text);
+        section.appendChild(body);
+
+        resultJson.appendChild(section);
       });
     }
+
+    const CatagorieData = {};
+    if (Array.isArray(data.result.ratios)) {
+      data.result.ratios.forEach(r => {
+        if (!CatagorieData[r.category]) CatagorieData[r.category] = [];
+        CatagorieData[r.category].push(r);
+      });
+
+      Object.entries(CatagorieData).forEach(([category, ratios]) => {
+        const detail = document.createElement("details");
+        detail.className = "mb-4 border rounded bg-gray-50";
+
+        const summary = document.createElement("summary");
+        summary.className = "cursor-pointer p-2 font-semibold text-blue-700 hover:underline";
+        summary.textContent = `📁 ${category}`;
+        detail.appendChild(summary);
+
+        const list = document.createElement("ul");
+        list.className = "p-3 space-y-2 text-sm";
+
+        ratios.forEach(r => {
+          if (r.value !== undefined) {
+            const li = document.createElement("li");
+            li.className = "p-2 border rounded bg-white shadow";
+            li.innerHTML = `<strong>${r.ratio}</strong>: ${r.value}<br/><span class="text-xs text-gray-500">Formula: ${r.formula}</span>`;
+            list.appendChild(li);
+          }
+        });
+
+        detail.appendChild(list);
+        ratioList.appendChild(detail);
+      });
+    }
+
+    resultDiv.classList.remove("hidden");
     loadArchive();
-    
   } else {
     resultJson.textContent = "Error: " + data.error;
     resultDiv.classList.remove("hidden");
   }
 
   btn.disabled = false;
-  btn.textContent = originalText;
+  btn.textContent = "Search";
 });
+
 
 var AllData = {}
 
