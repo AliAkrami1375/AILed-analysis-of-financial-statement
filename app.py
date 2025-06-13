@@ -110,10 +110,12 @@ def search():
         ratios_df = pd.read_excel("Ratio.xlsx")
         reshape_df = pd.read_csv("reshaped_data.csv")
         reshape_df = reshape_df[(reshape_df['Symbol'] == symbol) & (reshape_df['year'].astype(str) == year)]
-
         metric_values = reshape_df.set_index("Financial Metrics")["amount"].to_dict()
 
+        from collections import defaultdict
         computed_ratios = []
+        category_ratios = defaultdict(list)
+
         for _, row in ratios_df.iterrows():
             formula = str(row.get("Formula"))
             ratio_name = row.get("Ration")
@@ -126,13 +128,15 @@ def search():
                 for metric in metric_values:
                     temp_formula = temp_formula.replace(metric, str(metric_values[metric]))
                 value = eval(temp_formula)
-                computed_ratios.append({
+                ratio_data = {
                     "ratio": ratio_name,
                     "category": category,
                     "formula": formula,
                     "evaluated": temp_formula,
                     "value": value
-                })
+                }
+                computed_ratios.append(ratio_data)
+                category_ratios[category].append(ratio_data)
             except Exception as e:
                 computed_ratios.append({
                     "ratio": ratio_name,
@@ -142,30 +146,48 @@ def search():
                     "error": str(e)
                 })
 
-        prompt = (
+        client = OpenAI(api_key=config.get("openai_api_key"))
+        category_summaries = {}
+
+        for category, ratios in category_ratios.items():
+            ratios_text = "\n".join(f"- {r['ratio']}: {r['value']}" for r in ratios if 'value' in r)
+            cat_prompt = (
+                f"You are a financial analyst. Analyze the company's performance in the category of '{category}'.\n"
+                f"The following ratios were calculated:\n{ratios_text}\n\n"
+                f"Provide a concise 10-line summary of what this indicates about the company's financial health in this category."
+            )
+            response = client.chat.completions.create(
+                model="gpt-4.1",
+                messages=[
+                    {"role": "system", "content": "You are a financial analyst."},
+                    {"role": "user", "content": cat_prompt}
+                ],
+                temperature=0.7,
+                max_tokens=250
+            )
+            category_summaries[category] = response.choices[0].message.content
+
+        overall_prompt = (
             config.get("default_prompt", "You are a financial analyst.") + "\n" +
-            f"Analyze the financial performance of {company} in fiscal year {year}.\n" +
+            f"Analyze the overall financial performance of {company} in fiscal year {year}.\n" +
             field_lines + "\n\n" +
-            "Ratios computed:\n" +
+            "All Ratios computed:\n" +
             "\n".join(f"- {r['ratio']}: {r.get('value', 'Error')}" for r in computed_ratios if 'value' in r)
         )
-
-        client = OpenAI(api_key=config.get("openai_api_key"))
         response = client.chat.completions.create(
             model="gpt-4.1",
             messages=[
                 {"role": "system", "content": config.get("default_prompt", "You are a financial analyst.")},
-                {"role": "user", "content": prompt}
+                {"role": "user", "content": overall_prompt}
             ],
             temperature=0.7,
             max_tokens=300
         )
-
-        analysis = response.choices[0].message.content
-        # analysis ="result"
+        overall_summary = response.choices[0].message.content
 
         result = {
-            "summary": analysis,
+            "summary": overall_summary,
+            "category_summaries": category_summaries,
             "raw_data": record,
             "ratios": computed_ratios
         }
