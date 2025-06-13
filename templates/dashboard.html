@@ -5,20 +5,22 @@
   <title>Dashboard</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/showdown/2.1.0/showdown.min.js"></script>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/github-markdown-css/github-markdown.min.css">
 </head>
 <body class="bg-gray-100 min-h-screen">
-  <!-- Mobile Navbar -->
+  <!-- Navbar -->
   <header class="md:hidden bg-white shadow p-4 flex justify-between items-center">
     <h1 class="text-xl font-bold">Dashboard</h1>
     <button id="menuToggle" class="text-gray-600 focus:outline-none">
-      <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
+      <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
       </svg>
     </button>
   </header>
 
-  <!-- Sidebar / Menu -->
+  <!-- Layout -->
   <div class="md:flex">
+    <!-- Sidebar -->
     <aside id="sidebar" class="w-full md:w-64 bg-white shadow md:h-screen p-4 hidden md:block">
       <nav class="flex flex-col space-y-4">
         <button onclick="showTab('searchTab'); toggleMenu()" class="hover:text-blue-600 font-medium">🔍 Search</button>
@@ -28,9 +30,9 @@
       </nav>
     </aside>
 
-    <!-- Main Content -->
+    <!-- Main -->
     <main class="flex-1 p-4 md:p-8">
-      <!-- Search Tab -->
+      <!-- Search -->
       <section id="searchTab">
         <h2 class="text-2xl font-bold mb-4">Search Company</h2>
         <form id="searchForm" class="space-y-4 mb-6 max-w-lg mx-auto">
@@ -40,7 +42,7 @@
         </form>
         <div id="searchResult" class="bg-white p-4 rounded shadow hidden overflow-auto">
           <h3 class="text-lg font-semibold mb-2">Analysis Result</h3>
-          <pre id="resultJson" class="bg-gray-100 p-2 rounded text-sm whitespace-pre-wrap mb-4"></pre>
+          <div id="resultJson" class="markdown-body mb-4"></div>
           <div>
             <h4 class="text-md font-bold mb-2">Ratios</h4>
             <ul id="ratioList" class="space-y-2"></ul>
@@ -48,24 +50,20 @@
         </div>
       </section>
 
-      <!-- Archive Tab -->
+      <!-- Archive -->
       <section id="archiveTab" class="hidden">
         <h2 class="text-2xl font-bold mb-4">Your Archive</h2>
         <div class="overflow-x-auto">
           <table class="min-w-full bg-white shadow rounded table-auto text-left text-sm">
             <thead class="bg-gray-200">
-              <tr>
-                <th class="p-3">Company</th>
-                <th class="p-3">Year</th>
-                <th class="p-3">Summary</th>
-              </tr>
+              <tr><th class="p-3">Company</th><th class="p-3">Year</th><th class="p-3">Summary</th></tr>
             </thead>
             <tbody id="archiveTable"></tbody>
           </table>
         </div>
       </section>
 
-      <!-- Settings Tab -->
+      <!-- Settings -->
       <section id="settingsTab" class="hidden">
         <h2 class="text-2xl font-bold mb-4">Settings</h2>
         <form id="configForm" class="space-y-4 mb-8 max-w-xl mx-auto">
@@ -105,13 +103,7 @@
     </div>
   </div>
 
-  <script>
-    function toggleMenu() {
-      const sidebar = document.getElementById("sidebar");
-      sidebar.classList.toggle("hidden");
-    }
-    document.getElementById("menuToggle")?.addEventListener("click", toggleMenu);
-  </script>
+  <!-- JS -->
   <script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
 </body>
 </html>
